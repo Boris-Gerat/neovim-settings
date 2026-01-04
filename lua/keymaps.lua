@@ -9,9 +9,9 @@ local function map(mode, lhs, rhs, opts)
 end
 
 -- ---------- BUFFER MOTION ----------
-map("n", "<leader>l", "$")
+map("n", "<leader>l", "$", { nowait = true, desc = "End of line" })
+map("v", "<leader>l", "$", { nowait = true, desc = "End of line" })
 map("n", "<leader>h", "^")
-map("v", "<leader>l", "$")
 
 -- ---------- FILE ACTIONS ----------
 map("n", "<leader>w", "<cmd>w<cr>")

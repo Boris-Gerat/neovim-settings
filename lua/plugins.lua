@@ -143,11 +143,12 @@ return {
   "neovim/nvim-lspconfig",
   lazy = false,
   config = function()
-    -- Neovim 0.11 native LSP config API
-    -- (removes the deprecated require('lspconfig') framework usage)
-
-    -- Capabilities (optional; safe even without cmp)
+    -- Capabilities (for nvim-cmp)
     local capabilities = vim.lsp.protocol.make_client_capabilities()
+    local ok_cmp, cmp_lsp = pcall(require, "cmp_nvim_lsp")
+    if ok_cmp then
+      capabilities = cmp_lsp.default_capabilities(capabilities)
+    end
 
     -- PYRIGHT
     vim.lsp.config("pyright", {
@@ -178,7 +179,6 @@ return {
 },
 
   -- ────────────────────── R.nvim ──────────────────────
--- ────────────────────── R.nvim ──────────────────────
 {
   "R-nvim/R.nvim",
   lazy = false,
@@ -252,6 +252,104 @@ return {
     })
   end,
 },
+
+{
+  "akinsho/bufferline.nvim",
+  version = "*",
+  dependencies = { "nvim-tree/nvim-web-devicons" },
+  config = function()
+    require("bufferline").setup({
+      options = {
+        mode = "buffers",           -- buffers, not tabs
+        diagnostics = "nvim_lsp",
+        separator_style = "slant",
+        show_buffer_close_icons = false,
+        show_close_icon = false,
+        always_show_bufferline = true,
+      },
+    })
+  end,
+},
+
+{
+  "hrsh7th/nvim-cmp",
+  event = "InsertEnter",
+  dependencies = {
+    "hrsh7th/cmp-nvim-lsp",
+    "hrsh7th/cmp-buffer",
+    "hrsh7th/cmp-path",
+    "L3MON4D3/LuaSnip",
+    "saadparwaiz1/cmp_luasnip",
+    "rafamadriz/friendly-snippets",
+  },
+  config = function()
+    local cmp = require("cmp")
+    local luasnip = require("luasnip")
+
+    require("luasnip.loaders.from_vscode").lazy_load()
+
+    cmp.setup({
+      snippet = {
+        expand = function(args)
+          luasnip.lsp_expand(args.body)
+        end,
+      },
+      mapping = cmp.mapping.preset.insert({
+        ["<C-Space>"] = cmp.mapping.complete(),
+        ["<CR>"] = cmp.mapping.confirm({ select = true }),
+        ["<Tab>"] = cmp.mapping(function(fallback)
+          if cmp.visible() then
+            cmp.select_next_item()
+          elseif luasnip.expand_or_jumpable() then
+            luasnip.expand_or_jump()
+          else
+            fallback()
+          end
+        end, { "i", "s" }),
+        ["<S-Tab>"] = cmp.mapping(function(fallback)
+          if cmp.visible() then
+            cmp.select_prev_item()
+          elseif luasnip.jumpable(-1) then
+            luasnip.jump(-1)
+          else
+            fallback()
+          end
+        end, { "i", "s" }),
+      }),
+      sources = cmp.config.sources({
+        { name = "nvim_lsp" },
+        { name = "path" },
+        { name = "buffer" },
+        { name = "luasnip" },
+      }),
+      window = {
+        completion = cmp.config.window.bordered(),
+        documentation = cmp.config.window.bordered(),
+      },
+    })
+  end,
+},
+
+{
+  "stevearc/conform.nvim",
+  event = { "BufReadPre", "BufNewFile" },
+  opts = {
+    format_on_save = function(bufnr)
+      if vim.bo[bufnr].filetype == "python" then
+        return {
+          timeout_ms = 10000, -- ⬅️ 10 seconds
+          lsp_fallback = true,
+        }
+      end
+    end,
+    formatters_by_ft = {
+      python = { "black" },
+    },
+  },
+},
+
+
+
 
 
 
