@@ -50,47 +50,68 @@ return {
 
     vim.cmd.colorscheme("catppuccin")
   end,
+}, 
+  -- ────────────────────── Telescope ──────────────────────
+-- ────────────────────── Telescope ──────────────────────
+{
+  "nvim-telescope/telescope.nvim",
+  dependencies = { "nvim-lua/plenary.nvim" },
+  config = function()
+    local telescope = require("telescope")
+    local builtin = require("telescope.builtin")
+
+    telescope.setup()
+
+    -- Always use Neovim's current cwd
+    vim.keymap.set("n", "<leader>ff", function()
+      builtin.find_files({ cwd = vim.fn.getcwd() })
+    end, { desc = "Find files (cwd)" })
+
+    vim.keymap.set("n", "<leader>fg", function()
+      builtin.live_grep({ cwd = vim.fn.getcwd() })
+    end, { desc = "Live grep (cwd)" })
+  end,
 },
 
-  -- ────────────────────── Telescope ──────────────────────
-  {
-    "nvim-telescope/telescope.nvim",
-    dependencies = { "nvim-lua/plenary.nvim" },
-    config = function()
-      require("telescope").setup()
-      vim.keymap.set("n", "<leader>ff", "<cmd>Telescope find_files<CR>", { desc = "Find files" })
-      vim.keymap.set("n", "<leader>fg", "<cmd>Telescope live_grep<CR>", { desc = "Live grep" })
-    end,
-  },
+-- ────────────────────── Nvim-Tree (FILE EXPLORER) ──────────────────────
+{
+  "nvim-tree/nvim-tree.lua",
+  lazy = false,
+  dependencies = { "nvim-tree/nvim-web-devicons" },
+  config = function()
+    require("nvim-tree").setup({
+      disable_netrw = true,
+      hijack_netrw = true,
 
-  -- ────────────────────── Nvim-Tree (FILE EXPLORER) ──────────────────────
-  {
-    "nvim-tree/nvim-tree.lua",
-    lazy = false,
-    dependencies = { "nvim-tree/nvim-web-devicons" },
-    config = function()
-      require("nvim-tree").setup({
-        disable_netrw = true,
-        hijack_netrw = true,
-        sync_root_with_cwd = true,
-        update_focused_file = {
-          enable = true,
-          update_root = true,
-        },
-        view = {
-          width = 32,
-          side = "left",
-        },
-      })
+      sync_root_with_cwd = true,
+      respect_buf_cwd = true,
 
-      vim.keymap.set(
-        "n",
-        "<leader>e",
-        "<cmd>NvimTreeToggle<CR>",
-        { desc = "Toggle file explorer" }
-      )
-    end,
-  },
+      update_focused_file = {
+        enable = true,
+        update_root = true,
+      },
+
+      view = {
+        width = 32,
+        side = "left",
+      },
+    })
+
+    -- Refresh tree when Neovim's cwd changes via :cd / :tcd / :lcd
+    vim.api.nvim_create_autocmd("DirChanged", {
+      callback = function()
+        local ok, api = pcall(require, "nvim-tree.api")
+        if ok then
+          api.tree.change_root(vim.fn.getcwd())
+          api.tree.reload()
+        end
+      end,
+    })
+
+    vim.keymap.set("n", "<leader>e", "<cmd>NvimTreeToggle<CR>", { desc = "Toggle file explorer" })
+  end,
+},
+
 
 
 {
