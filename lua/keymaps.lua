@@ -5,7 +5,7 @@
 -- Leader keys (set before plugins load)
 vim.g.mapleader = " "
 vim.g.maplocalleader = " "
-
+  
 -- Small helper
 local function map(mode, lhs, rhs, opts)
   opts = vim.tbl_extend("force", { noremap = true, silent = true }, opts or {})
