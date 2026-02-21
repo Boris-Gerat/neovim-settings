@@ -204,34 +204,14 @@ return {
   "R-nvim/R.nvim",
   lazy = false,
   config = function()
-    ---@type RConfigUserOpts
-    local opts = {
+    require("r").setup({
       R_args = { "--quiet", "--no-save" },
 
-      -- Auto-start R when opening an R file
-      auto_start = "on startup",
-
-      hook = {
-        on_filetype = function()
-          local b = { buffer = true, silent = true }
-
-          -- ▶ Run entire file: <leader>r
-          vim.keymap.set("n", "<leader>r", "<Plug>RSendFile", b)
-
-          -- ▶ Run current line: Shift + Enter
-          vim.keymap.set("n", "<S-CR>", "<Plug>RDSendLine", b)
-
-          -- (optional but useful)
-          -- Visual selection: run selection
-          vim.keymap.set("v", "<leader>r", "<Plug>RSendSelection", b)
-        end,
-      },
-    }
-
-    require("r").setup(opts)
+      -- DO NOT auto start
+      auto_start = "no",
+    })
   end,
 },
-
 -- ────────────────────── LaTeX (vimtex) ──────────────────────
 {
   "lervag/vimtex",
