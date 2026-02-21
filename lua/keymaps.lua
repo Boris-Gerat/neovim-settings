@@ -241,3 +241,49 @@ vim.keymap.set("n", "<leader>rc", function()
     pcall(vim.cmd, "R")
   end
 end, { desc = "R: Toggle console" })
+
+
+vim.keymap.set("t", "<leader>cl", function()
+  local keys = vim.api.nvim_replace_termcodes(
+    'system("clear")\r',
+    true,
+    false,
+    true
+  )
+  vim.api.nvim_feedkeys(keys, "t", false)
+end, { desc = "Clear R console" })
+
+
+
+
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = { "r", "R", "rmd", "quarto" },
+  callback = function(ev)
+    vim.schedule(function()
+      -- 1) KILL the plugin mapping that uses <Space> to send/run
+      pcall(vim.keymap.del, "n", "<Space>", { buffer = ev.buf })
+      pcall(vim.keymap.del, "v", "<Space>", { buffer = ev.buf })
+
+      -- (you already have this; keep it)
+      pcall(vim.keymap.del, "i", "<Space>,", { buffer = ev.buf })
+
+      -- 2) Force your leader+l mapping in R buffers
+      vim.keymap.set("n", "<leader>l", "$", {
+        buffer = ev.buf,
+        noremap = true,
+        silent = true,
+        nowait = true,
+        desc = "End of line",
+      })
+      vim.keymap.set("v", "<leader>l", "$", {
+        buffer = ev.buf,
+        noremap = true,
+        silent = true,
+        nowait = true,
+        desc = "End of line",
+      })
+
+      -- ...keep the rest of your R mappings (\\. , <S-CR>, etc.)
+    end)
+  end,
+})
