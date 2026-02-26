@@ -287,3 +287,42 @@ vim.api.nvim_create_autocmd("FileType", {
     end)
   end,
 })
+
+-- ============================================================
+-- FORCE: Enter = newline (never accept completion)
+--        Tab = accept completion (only if menu is visible)
+-- Re-applied on InsertEnter so it beats nvim-cmp
+-- ============================================================
+
+local function force_pum_keys()
+  -- ENTER: close completion menu if visible, then newline
+  vim.keymap.set("i", "<CR>", function()
+    if vim.fn.pumvisible() == 1 then
+      return vim.api.nvim_replace_termcodes("<C-e><CR>", true, false, true)
+    end
+    return vim.api.nvim_replace_termcodes("<CR>", true, false, true)
+  end, { expr = true, noremap = true, silent = true })
+
+  -- TAB: accept completion if menu visible, else normal Tab
+  vim.keymap.set("i", "<Tab>", function()
+    if vim.fn.pumvisible() == 1 then
+      return vim.api.nvim_replace_termcodes("<C-y>", true, false, true)
+    end
+    return vim.api.nvim_replace_termcodes("<Tab>", true, false, true)
+  end, { expr = true, noremap = true, silent = true })
+end
+
+-- Apply once on startup (after everything loads)
+vim.api.nvim_create_autocmd("VimEnter", {
+  callback = function()
+    vim.defer_fn(force_pum_keys, 50)
+  end,
+})
+
+-- Re-apply every time you enter insert mode (this beats cmp re-maps)
+vim.api.nvim_create_autocmd("InsertEnter", {
+  callback = force_pum_keys,
+})
+
+-- R pipe shortcut: \+=  →  %>%
+vim.keymap.set("i", "\\=", " %>% ", { noremap = true, silent = true })

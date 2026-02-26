@@ -199,16 +199,16 @@ return {
   end,
 },
 
-  -- ────────────────────── R.nvim ──────────────────────
+
 {
   "R-nvim/R.nvim",
-  lazy = false,
+  ft = { "r", "rmd", "quarto" },
   config = function()
     require("r").setup({
       R_args = { "--quiet", "--no-save" },
-
-      -- DO NOT auto start
       auto_start = "no",
+      max_paste_lines = 1,
+      source_args = "echo=TRUE",
     })
   end,
 },
@@ -217,7 +217,6 @@ return {
   "lervag/vimtex",
   ft = { "tex", "plaintex", "latex" },
   init = function()
-    -- Use latexmk
     vim.g.vimtex_compiler_method = "latexmk"
 
     -- Viewer (macOS)
@@ -230,30 +229,30 @@ return {
     vim.g.vimtex_fold_enabled = 0
     vim.g.vimtex_syntax_enabled = 1
 
-    -- latexmk options
+    -- IMPORTANT: use out_dir (not build_dir) for latexmk
     vim.g.vimtex_compiler_latexmk = {
-      build_dir = "build",
+      out_dir = "build",
       callback = 1,
       continuous = 1,
       executable = "latexmk",
       options = {
-        "-pdf",
-        "-interaction=nonstopmode",
+        "-verbose",
+        "-file-line-error",
         "-synctex=1",
+        "-interaction=nonstopmode",
       },
     }
   end,
   config = function()
-    -- Ensure build dir exists
+    -- Ensure build dir exists (relative to project root/cwd)
     vim.api.nvim_create_autocmd("FileType", {
-      pattern = "tex",
+      pattern = { "tex", "plaintex", "latex" },
       callback = function()
         vim.fn.mkdir("build", "p")
       end,
     })
   end,
 },
-
 {
   "akinsho/bufferline.nvim",
   version = "*",
