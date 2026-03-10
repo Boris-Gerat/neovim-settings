@@ -169,6 +169,10 @@ vim.api.nvim_create_autocmd("FileType", {
     vim.keymap.set("n", "<leader>k", "<cmd>VimtexStop<CR>",
       vim.tbl_extend("force", opts, { desc = "Stop compile" })
     )
+    -- End of line in tex buffers (beats VimTeX's potential <leader>l claim)
+    vim.keymap.set({ "n", "v" }, "<leader>l", "$",
+      vim.tbl_extend("force", opts, { nowait = true, desc = "End of line" })
+    )
   end,
 })
 
@@ -225,9 +229,6 @@ vim.keymap.set("i", "jj", "<Esc>", { noremap = true, silent = true, desc = "Exit
 -- End of line (single leader)
 vim.keymap.set("n", "<leader>l", "$", { noremap = true, silent = true, nowait = true, desc = "End of line" })
 vim.keymap.set("v", "<leader>l", "$", { noremap = true, silent = true, nowait = true, desc = "End of line" })
-
-
-
 
 
 vim.keymap.set("n", "<leader>rc", function()
@@ -326,3 +327,109 @@ vim.api.nvim_create_autocmd("InsertEnter", {
 
 -- R pipe shortcut: \+=  →  %>%
 vim.keymap.set("i", "\\=", " %>% ", { noremap = true, silent = true })
+
+
+
+-- ============================================================
+-- MOLTEN: global output settings (set before plugin loads)
+-- ============================================================
+vim.g.molten_output_win_max_height = 20
+vim.g.molten_auto_open_output = true
+vim.g.molten_output_show_more = true
+vim.g.molten_virt_text_output = true
+vim.g.molten_virt_lines_off_by_1 = false
+
+-- ============================================================
+-- JUPYTER / MOLTEN (mirrors R.nvim style)
+-- ============================================================
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = { "python", "jupyter" },
+  callback = function(ev)
+    vim.schedule(function()
+      local opts = { buffer = ev.buf, silent = true }
+
+      -- Start kernel (like RStart)
+      vim.keymap.set("n", "<leader>ji", "<cmd>MoltenInit<CR>",
+        vim.tbl_extend("force", opts, { desc = "Jupyter: Init kernel" }))
+
+      -- Shift+Enter: run CURRENT LINE only (mirrors R's RDSendLine)
+      vim.keymap.set("n", "<S-CR>", "<cmd>MoltenEvaluateLine<CR>",
+        vim.tbl_extend("force", opts, { desc = "Jupyter: Run line" }))
+
+      -- Visual Shift+Enter: run SELECTION
+      vim.keymap.set("v", "<S-CR>", function()
+        vim.cmd("noautocmd normal! \27")
+        vim.cmd("MoltenEvaluateVisual")
+      end, vim.tbl_extend("force", opts, { desc = "Jupyter: Run selection" }))
+
+      -- <leader>r: run WHOLE FILE
+      vim.keymap.set("n", "<leader>r", function()
+        local pos = vim.api.nvim_win_get_cursor(0)
+        vim.cmd("normal! ggVG")
+        vim.cmd("MoltenEvaluateVisual")
+        vim.api.nvim_win_set_cursor(0, pos)
+      end, vim.tbl_extend("force", opts, { desc = "Jupyter: Run all" }))
+
+      -- <leader>jl: re-run last cell
+      vim.keymap.set("n", "<leader>jl", "<cmd>MoltenReevaluateCell<CR>",
+        vim.tbl_extend("force", opts, { desc = "Jupyter: Re-run cell" }))
+
+      -- <leader>jq: close kernel (like RClose)
+      vim.keymap.set("n", "<leader>jq", "<cmd>MoltenDeinit<CR>",
+        vim.tbl_extend("force", opts, { desc = "Jupyter: Close kernel" }))
+
+      -- <leader>jk: interrupt kernel (like RStop)
+      vim.keymap.set("n", "<leader>jk", "<cmd>MoltenInterrupt<CR>",
+        vim.tbl_extend("force", opts, { desc = "Jupyter: Interrupt kernel" }))
+
+      -- <leader>jo: show output window
+      vim.keymap.set("n", "<leader>jo", "<cmd>MoltenShowOutput<CR>",
+        vim.tbl_extend("force", opts, { desc = "Jupyter: Show output" }))
+
+      -- <leader>jh: hide output window
+      vim.keymap.set("n", "<leader>jh", "<cmd>MoltenHideOutput<CR>",
+        vim.tbl_extend("force", opts, { desc = "Jupyter: Hide output" }))
+    end)
+  end,
+})
+
+-- ============================================================
+-- JUPYTER: auto-init kernel on open (no prompt)
+-- ============================================================
+vim.api.nvim_create_autocmd("BufEnter", {
+  pattern = "*.ipynb",
+  callback = function()
+    vim.defer_fn(function()
+      if not vim.b.molten_initialized then
+        vim.cmd("MoltenInit python3")
+        vim.b.molten_initialized = true
+      end
+    end, 100)
+  end,
+})
+
+
+local function set_molten_highlights()
+  vim.api.nvim_set_hl(0, "MoltenCell",                { bg = "#1e2030" })
+  vim.api.nvim_set_hl(0, "MoltenOutputText",          { fg = "#f38ba8" })
+  vim.api.nvim_set_hl(0, "MoltenVirtualText",         { fg = "#f38ba8", italic = true })
+  vim.api.nvim_set_hl(0, "MoltenOutputSuccess",       { fg = "#f38ba8", italic = true })
+  vim.api.nvim_set_hl(0, "MoltenOutputFail",          { fg = "#f38ba8", italic = true })
+  vim.api.nvim_set_hl(0, "MoltenOutputBorder",        { fg = "#89b4fa" })
+  vim.api.nvim_set_hl(0, "MoltenOutputBorderSuccess", { fg = "#f38ba8" })
+  vim.api.nvim_set_hl(0, "MoltenOutputBorderFail",    { fg = "#f38ba8" })
+  vim.api.nvim_set_hl(0, "MoltenOutputWin",           { bg = "#1e2030", fg = "#f38ba8" })
+  vim.api.nvim_set_hl(0, "MoltenOutputWinNC",         { bg = "#1e2030", fg = "#6c7086" })
+  vim.api.nvim_set_hl(0, "MoltenOutputFooter",        { fg = "#6c7086", italic = true })
+end
+-- delay so Molten doesn't overwrite after us
+vim.api.nvim_create_autocmd("VimEnter", {
+  callback = function()
+    vim.defer_fn(set_molten_highlights, 500)
+  end,
+})
+vim.api.nvim_create_autocmd("ColorScheme", { pattern = "*", callback = set_molten_highlights })
+vim.o.maxfuncdepth = 200
+
+-- Formating
+vim.keymap.set("n", "<leader>Q", "gggqG", { silent = true, desc = "Reformat whole file" })

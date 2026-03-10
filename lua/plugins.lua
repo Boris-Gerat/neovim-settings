@@ -348,10 +348,42 @@ return {
   },
 },
 
+-- Jupyter stuff
 
-
-
-
+{
+  "benlubas/molten-nvim",
+  build = ":UpdateRemotePlugins",
+  dependencies = {
+    "3rd/image.nvim",
+  },
+  init = function()
+    vim.g.molten_image_provider = "image.nvim"
+    vim.g.molten_output_win_max_height = 40
+    vim.g.molten_auto_open_output = true
+  end,
+},
+{
+  "3rd/image.nvim",
+  config = function()
+     require("image").setup({
+	  backend = "kitty",
+	  processor = "magick_cli",
+	  max_width = 200,           -- wider
+	  max_height = 40,           -- taller
+	  max_width_window_percentage = 80,   -- % of window width
+	  max_height_window_percentage = 50,  -- % of window height
+	  window_overlap_clear_enabled = true,
+	}) end,
+},
+{
+  "GCBallesteros/jupytext.nvim",
+  config = function()
+    require("jupytext").setup({
+      style = "hydrogen",
+      output_extension = "auto",
+      force_ft = "python",
+    })
+  end,
+},
 
 }
-
