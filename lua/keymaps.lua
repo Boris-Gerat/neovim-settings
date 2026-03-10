@@ -431,5 +431,14 @@ vim.api.nvim_create_autocmd("VimEnter", {
 vim.api.nvim_create_autocmd("ColorScheme", { pattern = "*", callback = set_molten_highlights })
 vim.o.maxfuncdepth = 200
 
--- Formating
-vim.keymap.set("n", "<leader>Q", "gggqG", { silent = true, desc = "Reformat whole file" })
+vim.keymap.set("n", "<leader>Q", function()
+  local tw = vim.opt.textwidth:get()
+  if tw == 0 then tw = 80 end
+  local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+  for i, line in ipairs(lines) do
+    if #line > tw then
+      vim.api.nvim_win_set_cursor(0, { i, 0 })
+      vim.cmd("normal! gqq")
+    end
+  end
+end, { silent = true, desc = "Wrap only long lines" })
