@@ -16,32 +16,23 @@ end
 -- BASIC EDITING / MOTION
 -- ============================================================
 
--- Start of line
 map("n", "<leader>h", "^", { desc = "Start of line" })
 
--- You asked specifically: <Space><Space>l -> end of line
 map("n", "<leader><leader>l", "$", { nowait = true, desc = "End of line (double leader)" })
 map("v", "<leader><leader>l", "$", { nowait = true, desc = "End of line (double leader)" })
 
--- Select all
 map("n", "<leader>a", "ggVG", { desc = "Select all" })
-
--- Clipboard yank
 map({ "n", "v" }, "<leader>y", [["+y]], { desc = "Yank to system clipboard" })
 
--- File actions
 map("n", "<leader>w", "<cmd>w<cr>", { desc = "Write" })
 map("n", "<leader>q", "<cmd>q<cr>", { desc = "Quit" })
 
--- Buffer nav (global)
 map("n", "<leader>n", "<cmd>bnext<cr>", { desc = "Next buffer" })
 map("n", "<leader>p", "<cmd>bprevious<cr>", { desc = "Previous buffer" })
 map("n", "<leader>x", "<cmd>bdelete<cr>", { desc = "Delete buffer" })
 
--- macOS GUI select-all (works only in some terminals)
 map("n", "<D-a>", "ggVG", { desc = "Select all (GUI)" })
 
--- Fast jumps (J/K = 10 lines)
 map({ "n", "v" }, "J", "10j", { desc = "Down 10" })
 map({ "n", "v" }, "K", "10k", { desc = "Up 10" })
 
@@ -49,12 +40,10 @@ map({ "n", "v" }, "K", "10k", { desc = "Up 10" })
 -- TOGGLETERM
 -- ============================================================
 
--- Dedicated terminal (#2) so it doesn't conflict with R console
 map("n", "<leader>t", function()
   require("toggleterm").toggle(2, nil, nil, "horizontal")
 end, { desc = "Toggle terminal (#2)" })
 
--- Terminal-mode QoL
 do
   local term_opts = { noremap = true, silent = true }
   vim.keymap.set("t", "<Esc>", [[<C-\><C-n>]], term_opts)
@@ -73,11 +62,9 @@ local function run_current_file()
   local ext  = vim.fn.expand("%:e")
 
   if ext == "py" then
-    -- Python runs in ToggleTerm terminal #2 (real shell)
     require("toggleterm").exec("python " .. vim.fn.fnameescape(file), 2)
 
   elseif ext == "r" or ext == "R" then
-    -- R: send whole file to R.nvim
     vim.api.nvim_feedkeys(
       vim.api.nvim_replace_termcodes("<Plug>RSendFile", true, false, true),
       "n",
@@ -89,7 +76,6 @@ local function run_current_file()
   end
 end
 
--- Global runner
 map("n", "<leader>r", run_current_file, { desc = "Run current file" })
 
 -- ============================================================
@@ -117,17 +103,14 @@ vim.api.nvim_create_autocmd("FileType", {
   pattern = { "r", "R", "rmd", "quarto" },
   callback = function(ev)
     vim.schedule(function()
-      -- remove Nvim-R mapping that causes "space" delay (if present)
       pcall(vim.keymap.del, "i", "<Space>,", { buffer = ev.buf })
 
-      -- assignment shortcut: \. -> " <- "
       vim.keymap.set("i", "\\.", " <- ", {
         buffer = ev.buf,
         silent = true,
         desc = "Insert <-",
       })
 
-      -- Shift+Enter: run line / run selection
       vim.keymap.set("n", "<S-CR>", "<Plug>RDSendLine", {
         buffer = ev.buf,
         silent = true,
@@ -139,7 +122,6 @@ vim.api.nvim_create_autocmd("FileType", {
         desc = "Send selection to R",
       })
 
-      -- In R buffers: <leader>p toggles alternate buffer instantly
       vim.keymap.set("n", "<leader>p", "<cmd>b#<cr>", {
         buffer = ev.buf,
         nowait = true,
@@ -151,124 +133,17 @@ vim.api.nvim_create_autocmd("FileType", {
 })
 
 -- ============================================================
--- TEX: VimTeX (buffer-local overrides)
+-- R FILETYPE: kill plugin <Space> mappings + force <leader>l
 -- ============================================================
-
-vim.api.nvim_create_autocmd("FileType", {
-  pattern = "tex",
-  callback = function(ev)
-    local opts = { buffer = ev.buf, silent = true, noremap = true }
-
-    -- In tex: <leader>r compiles instead of run_current_file
-    vim.keymap.set("n", "<leader>r", "<cmd>VimtexCompile<CR>",
-      vim.tbl_extend("force", opts, { desc = "VimTeX Compile" })
-    )
-    vim.keymap.set("n", "<leader>v", "<cmd>VimtexView<CR>",
-      vim.tbl_extend("force", opts, { desc = "View PDF" })
-    )
-    vim.keymap.set("n", "<leader>k", "<cmd>VimtexStop<CR>",
-      vim.tbl_extend("force", opts, { desc = "Stop compile" })
-    )
-    -- End of line in tex buffers (beats VimTeX's potential <leader>l claim)
-    vim.keymap.set({ "n", "v" }, "<leader>l", "$",
-      vim.tbl_extend("force", opts, { nowait = true, desc = "End of line" })
-    )
-  end,
-})
-
--- ============================================================
--- R.nvim: start/show/close console (FIXED: no invalid "or" statement)
--- ============================================================
-
-local function r_cmd(cmd)
-  return pcall(vim.cmd, cmd)
-end
-
-local function r_start_and_focus()
-  -- Start R first
-  if not (r_cmd("RStart") or r_cmd("R")) then
-    vim.notify("R.nvim: can't start R (no :RStart / :R).", vim.log.levels.ERROR)
-    return
-  end
-
-  -- Then try to focus/show the console (command name depends on version)
-  vim.defer_fn(function()
-    -- try focus, else show, else console
-    if not r_cmd("RFocus") then
-      if not r_cmd("RShow") then
-        r_cmd("RConsole")
-      end
-    end
-  end, 120)
-end
-
-map("n", "<leader>rr", r_start_and_focus, { desc = "R: Start + show console" })
-map("n", "<leader>rq", "<cmd>RClose<cr>", { desc = "R: Close" })
-
--- ============================================================
--- LSP: prevent K being stolen by hover
--- ============================================================
-
--- Many setups map K -> hover. We keep YOUR K=10k and move hover to gK.
-vim.api.nvim_create_autocmd("LspAttach", {
-  callback = function(ev)
-    -- Keep jump mappings in LSP buffers too
-    vim.keymap.set("n", "K", "10k", { buffer = ev.buf, noremap = true, silent = true, desc = "Up 10" })
-    vim.keymap.set("n", "J", "10j", { buffer = ev.buf, noremap = true, silent = true, desc = "Down 10" })
-
-    -- Hover lives here instead
-    vim.keymap.set("n", "gK", vim.lsp.buf.hover, { buffer = ev.buf, desc = "LSP Hover" })
-  end,
-})
-
--- ============================================================
--- FORCE jj at the VERY END so nothing overrides it
--- ============================================================
-
-vim.keymap.set("i", "jj", "<Esc>", { noremap = true, silent = true, desc = "Exit insert" })
--- End of line (single leader)
-vim.keymap.set("n", "<leader>l", "$", { noremap = true, silent = true, nowait = true, desc = "End of line" })
-vim.keymap.set("v", "<leader>l", "$", { noremap = true, silent = true, nowait = true, desc = "End of line" })
-
-
-vim.keymap.set("n", "<leader>rc", function()
-  -- If R console exists → close
-  if vim.fn.exists(":RClose") == 2 then
-    pcall(vim.cmd, "RClose")
-  end
-
-  -- Try to start R
-  if not pcall(vim.cmd, "RStart") then
-    pcall(vim.cmd, "R")
-  end
-end, { desc = "R: Toggle console" })
-
-
-vim.keymap.set("t", "<leader>cl", function()
-  local keys = vim.api.nvim_replace_termcodes(
-    'system("clear")\r',
-    true,
-    false,
-    true
-  )
-  vim.api.nvim_feedkeys(keys, "t", false)
-end, { desc = "Clear R console" })
-
-
-
 
 vim.api.nvim_create_autocmd("FileType", {
   pattern = { "r", "R", "rmd", "quarto" },
   callback = function(ev)
     vim.schedule(function()
-      -- 1) KILL the plugin mapping that uses <Space> to send/run
       pcall(vim.keymap.del, "n", "<Space>", { buffer = ev.buf })
       pcall(vim.keymap.del, "v", "<Space>", { buffer = ev.buf })
-
-      -- (you already have this; keep it)
       pcall(vim.keymap.del, "i", "<Space>,", { buffer = ev.buf })
 
-      -- 2) Force your leader+l mapping in R buffers
       vim.keymap.set("n", "<leader>l", "$", {
         buffer = ev.buf,
         noremap = true,
@@ -283,20 +158,103 @@ vim.api.nvim_create_autocmd("FileType", {
         nowait = true,
         desc = "End of line",
       })
-
-      -- ...keep the rest of your R mappings (\\. , <S-CR>, etc.)
     end)
   end,
 })
 
 -- ============================================================
--- FORCE: Enter = newline (never accept completion)
---        Tab = accept completion (only if menu is visible)
--- Re-applied on InsertEnter so it beats nvim-cmp
+-- TEX: VimTeX (buffer-local overrides)
+-- ============================================================
+
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "tex",
+  callback = function(ev)
+    local opts = { buffer = ev.buf, silent = true, noremap = true }
+
+    vim.keymap.set("n", "<leader>r", "<cmd>VimtexCompile<CR>",
+      vim.tbl_extend("force", opts, { desc = "VimTeX Compile" })
+    )
+    vim.keymap.set("n", "<leader>v", "<cmd>VimtexView<CR>",
+      vim.tbl_extend("force", opts, { desc = "View PDF" })
+    )
+    vim.keymap.set("n", "<leader>k", "<cmd>VimtexStop<CR>",
+      vim.tbl_extend("force", opts, { desc = "Stop compile" })
+    )
+    vim.keymap.set({ "n", "v" }, "<leader>l", "$",
+      vim.tbl_extend("force", opts, { nowait = true, desc = "End of line" })
+    )
+  end,
+})
+
+-- ============================================================
+-- R.nvim: start/show/close console
+-- ============================================================
+
+local function r_cmd(cmd)
+  return pcall(vim.cmd, cmd)
+end
+
+local function r_start_and_focus()
+  if not (r_cmd("RStart") or r_cmd("R")) then
+    vim.notify("R.nvim: can't start R (no :RStart / :R).", vim.log.levels.ERROR)
+    return
+  end
+  vim.defer_fn(function()
+    if not r_cmd("RFocus") then
+      if not r_cmd("RShow") then
+        r_cmd("RConsole")
+      end
+    end
+  end, 120)
+end
+
+map("n", "<leader>rr", r_start_and_focus, { desc = "R: Start + show console" })
+map("n", "<leader>rq", "<cmd>RClose<cr>", { desc = "R: Close" })
+
+vim.keymap.set("n", "<leader>rc", function()
+  if vim.fn.exists(":RClose") == 2 then
+    pcall(vim.cmd, "RClose")
+  end
+  if not pcall(vim.cmd, "RStart") then
+    pcall(vim.cmd, "R")
+  end
+end, { desc = "R: Toggle console" })
+
+vim.keymap.set("t", "<leader>cl", function()
+  local keys = vim.api.nvim_replace_termcodes(
+    'system("clear")\r',
+    true,
+    false,
+    true
+  )
+  vim.api.nvim_feedkeys(keys, "t", false)
+end, { desc = "Clear R console" })
+
+-- ============================================================
+-- LSP: prevent K being stolen by hover
+-- ============================================================
+
+vim.api.nvim_create_autocmd("LspAttach", {
+  callback = function(ev)
+    vim.keymap.set("n", "K", "10k", { buffer = ev.buf, noremap = true, silent = true, desc = "Up 10" })
+    vim.keymap.set("n", "J", "10j", { buffer = ev.buf, noremap = true, silent = true, desc = "Down 10" })
+    vim.keymap.set("n", "gK", vim.lsp.buf.hover, { buffer = ev.buf, desc = "LSP Hover" })
+  end,
+})
+
+-- ============================================================
+-- FORCE: jj, <leader>l (global, set last so nothing overrides)
+-- ============================================================
+
+vim.keymap.set("i", "jj", "<Esc>", { noremap = true, silent = true, desc = "Exit insert" })
+vim.keymap.set("n", "<leader>l", "$", { noremap = true, silent = true, nowait = true, desc = "End of line" })
+vim.keymap.set("v", "<leader>l", "$", { noremap = true, silent = true, nowait = true, desc = "End of line" })
+
+-- ============================================================
+-- FORCE: Enter = newline, Tab = accept completion
 -- ============================================================
 
 local function force_pum_keys()
-  -- ENTER: close completion menu if visible, then newline
   vim.keymap.set("i", "<CR>", function()
     if vim.fn.pumvisible() == 1 then
       return vim.api.nvim_replace_termcodes("<C-e><CR>", true, false, true)
@@ -304,7 +262,6 @@ local function force_pum_keys()
     return vim.api.nvim_replace_termcodes("<CR>", true, false, true)
   end, { expr = true, noremap = true, silent = true })
 
-  -- TAB: accept completion if menu visible, else normal Tab
   vim.keymap.set("i", "<Tab>", function()
     if vim.fn.pumvisible() == 1 then
       return vim.api.nvim_replace_termcodes("<C-y>", true, false, true)
@@ -313,26 +270,23 @@ local function force_pum_keys()
   end, { expr = true, noremap = true, silent = true })
 end
 
--- Apply once on startup (after everything loads)
 vim.api.nvim_create_autocmd("VimEnter", {
   callback = function()
     vim.defer_fn(force_pum_keys, 50)
   end,
 })
 
--- Re-apply every time you enter insert mode (this beats cmp re-maps)
 vim.api.nvim_create_autocmd("InsertEnter", {
   callback = force_pum_keys,
 })
 
--- R pipe shortcut: \+=  →  %>%
+-- R pipe shortcut: \= → %>%
 vim.keymap.set("i", "\\=", " %>% ", { noremap = true, silent = true })
 
-
-
 -- ============================================================
--- MOLTEN: global output settings (set before plugin loads)
+-- MOLTEN: global output settings
 -- ============================================================
+
 vim.g.molten_output_win_max_height = 20
 vim.g.molten_auto_open_output = true
 vim.g.molten_output_show_more = true
@@ -340,29 +294,26 @@ vim.g.molten_virt_text_output = true
 vim.g.molten_virt_lines_off_by_1 = false
 
 -- ============================================================
--- JUPYTER / MOLTEN (mirrors R.nvim style)
+-- JUPYTER / MOLTEN (only for .ipynb — never plain .py)
 -- ============================================================
+
 vim.api.nvim_create_autocmd("FileType", {
-  pattern = { "python", "jupyter" },
+  pattern = { "jupyter" },
   callback = function(ev)
     vim.schedule(function()
       local opts = { buffer = ev.buf, silent = true }
 
-      -- Start kernel (like RStart)
       vim.keymap.set("n", "<leader>ji", "<cmd>MoltenInit<CR>",
         vim.tbl_extend("force", opts, { desc = "Jupyter: Init kernel" }))
 
-      -- Shift+Enter: run CURRENT LINE only (mirrors R's RDSendLine)
       vim.keymap.set("n", "<S-CR>", "<cmd>MoltenEvaluateLine<CR>",
         vim.tbl_extend("force", opts, { desc = "Jupyter: Run line" }))
 
-      -- Visual Shift+Enter: run SELECTION
       vim.keymap.set("v", "<S-CR>", function()
         vim.cmd("noautocmd normal! \27")
         vim.cmd("MoltenEvaluateVisual")
       end, vim.tbl_extend("force", opts, { desc = "Jupyter: Run selection" }))
 
-      -- <leader>r: run WHOLE FILE
       vim.keymap.set("n", "<leader>r", function()
         local pos = vim.api.nvim_win_get_cursor(0)
         vim.cmd("normal! ggVG")
@@ -370,32 +321,21 @@ vim.api.nvim_create_autocmd("FileType", {
         vim.api.nvim_win_set_cursor(0, pos)
       end, vim.tbl_extend("force", opts, { desc = "Jupyter: Run all" }))
 
-      -- <leader>jl: re-run last cell
       vim.keymap.set("n", "<leader>jl", "<cmd>MoltenReevaluateCell<CR>",
         vim.tbl_extend("force", opts, { desc = "Jupyter: Re-run cell" }))
-
-      -- <leader>jq: close kernel (like RClose)
       vim.keymap.set("n", "<leader>jq", "<cmd>MoltenDeinit<CR>",
         vim.tbl_extend("force", opts, { desc = "Jupyter: Close kernel" }))
-
-      -- <leader>jk: interrupt kernel (like RStop)
       vim.keymap.set("n", "<leader>jk", "<cmd>MoltenInterrupt<CR>",
         vim.tbl_extend("force", opts, { desc = "Jupyter: Interrupt kernel" }))
-
-      -- <leader>jo: show output window
       vim.keymap.set("n", "<leader>jo", "<cmd>MoltenShowOutput<CR>",
         vim.tbl_extend("force", opts, { desc = "Jupyter: Show output" }))
-
-      -- <leader>jh: hide output window
       vim.keymap.set("n", "<leader>jh", "<cmd>MoltenHideOutput<CR>",
         vim.tbl_extend("force", opts, { desc = "Jupyter: Hide output" }))
     end)
   end,
 })
 
--- ============================================================
--- JUPYTER: auto-init kernel on open (no prompt)
--- ============================================================
+-- Auto-init kernel when opening .ipynb
 vim.api.nvim_create_autocmd("BufEnter", {
   pattern = "*.ipynb",
   callback = function()
@@ -408,6 +348,9 @@ vim.api.nvim_create_autocmd("BufEnter", {
   end,
 })
 
+-- ============================================================
+-- MOLTEN: highlights
+-- ============================================================
 
 local function set_molten_highlights()
   vim.api.nvim_set_hl(0, "MoltenCell",                { bg = "#1e2030" })
@@ -422,13 +365,18 @@ local function set_molten_highlights()
   vim.api.nvim_set_hl(0, "MoltenOutputWinNC",         { bg = "#1e2030", fg = "#6c7086" })
   vim.api.nvim_set_hl(0, "MoltenOutputFooter",        { fg = "#6c7086", italic = true })
 end
--- delay so Molten doesn't overwrite after us
+
 vim.api.nvim_create_autocmd("VimEnter", {
   callback = function()
     vim.defer_fn(set_molten_highlights, 500)
   end,
 })
 vim.api.nvim_create_autocmd("ColorScheme", { pattern = "*", callback = set_molten_highlights })
+
+-- ============================================================
+-- MISC
+-- ============================================================
+
 vim.o.maxfuncdepth = 200
 
 vim.keymap.set("n", "<leader>Q", function()
@@ -442,3 +390,33 @@ vim.keymap.set("n", "<leader>Q", function()
     end
   end
 end, { silent = true, desc = "Wrap only long lines" })
+
+
+
+
+vim.filetype.add({
+  extension = {
+    ipynb = "jupyter",
+  },
+})
+
+
+
+
+map("n", "<leader>rt", function()
+  local r_win = nil
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    local buf = vim.api.nvim_win_get_buf(win)
+    local name = vim.api.nvim_buf_get_name(buf)
+    if name:match("term://") and name:match(":R") then
+      r_win = win
+      break
+    end
+  end
+
+  if r_win then
+    vim.api.nvim_win_hide(r_win)
+  else
+    pcall(vim.cmd, "RShow")
+  end
+end, { desc = "R: Toggle console visibility" })
