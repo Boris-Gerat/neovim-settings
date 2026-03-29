@@ -2,9 +2,6 @@
 -- KEYMAPS.LUA (clean + conflict-free + working)
 -- ============================================================
 
--- Leader keys (set before plugins load)
-vim.g.mapleader = " "
-vim.g.maplocalleader = " "
   
 -- Small helper
 local function map(mode, lhs, rhs, opts)
@@ -402,7 +399,7 @@ vim.filetype.add({
 
 
 
-
+-- R TERMINAL TOGGLE
 map("n", "<leader>rt", function()
   local r_win = nil
   for _, win in ipairs(vim.api.nvim_list_wins()) do

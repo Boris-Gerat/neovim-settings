@@ -28,30 +28,36 @@ return {
   },
 
   -- ────────────────────── Colorscheme ──────────────────────
-  -- ────────────────────── Colorscheme ──────────────────────
-{
-  "catppuccin/nvim",
-  name = "catppuccin",
+  --
+  {
+  "rebelot/kanagawa.nvim",
+  name = "kanagawa",
   priority = 1000,
   lazy = false,
   config = function()
-    require("catppuccin").setup({
-      flavour = "mocha",
-      integrations = {
-        native_lsp = { enabled = true },
-      },
-      custom_highlights = function(colors)
+    require("kanagawa").setup({
+      theme = "dragon",
+      overrides = function(colors)
+        local palette = colors.palette
         return {
-          LineNr = { fg = colors.overlay1 }, -- non-current lines
-          CursorLineNr = { fg = colors.lavender, bold = true }, -- current line
-        }
+          LineNr = { fg = palette.fujiGray },
+          CursorLineNr = { fg = palette.crystalBlue, bold = true },
+          NormalFloat = { bg = palette.sumiInk0 },
+	  FloatBorder = { fg = palette.fujiWhite, bg = palette.sumiInk0 },
+	NoiceCmdlinePopupBorder = { fg = palette.fujiWhite, bg = palette.sumiInk0 },
+	NoiceCmdlineIcon = { fg = palette.fujiWhite },}
       end,
     })
-
-    vim.cmd.colorscheme("catppuccin")
+    vim.cmd.colorscheme("kanagawa-dragon")
   end,
-}, 
-  -- ────────────────────── Telescope ──────────────────────
+},
+
+{
+  "goolord/alpha-nvim",
+  dependencies = { "nvim-tree/nvim-web-devicons" },
+  event = "VimEnter",
+},
+
 -- ────────────────────── Telescope ──────────────────────
 {
   "nvim-telescope/telescope.nvim",

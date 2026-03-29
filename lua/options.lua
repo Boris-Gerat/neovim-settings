@@ -38,3 +38,8 @@ end, { desc = "Toggle Ruler/Wrap" })
 
 -- COLOR SCHEME FIX
 vim.api.nvim_set_hl(0, "ColorColumn", { bg = "#44475a" })
+
+-- MINIMUM LINES BELLOW 
+vim.opt.scrolloff = 10
+
+
