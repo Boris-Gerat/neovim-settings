@@ -42,4 +42,18 @@ vim.api.nvim_set_hl(0, "ColorColumn", { bg = "#44475a" })
 -- MINIMUM LINES BELLOW 
 vim.opt.scrolloff = 10
 
+-- ============================================================
+-- JUPYTER / MOLTEN
+-- ...existing BufEnter autocmd...
+-- ============================================================
 
+-- Clean up the .py file that jupytext creates on disk
+vim.api.nvim_create_autocmd("BufWritePost", {
+  pattern = "*.ipynb",
+  callback = function()
+    local py_file = vim.fn.expand("%:r") .. ".py"
+    if vim.fn.filereadable(py_file) == 1 then
+      vim.fn.delete(py_file)
+    end
+  end,
+})

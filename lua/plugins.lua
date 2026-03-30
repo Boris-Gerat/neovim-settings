@@ -387,7 +387,7 @@ return {
     require("jupytext").setup({
       style = "hydrogen",
       output_extension = "auto",
-      force_ft = "python",
+      -- remove force_ft entirely
     })
   end,
 },

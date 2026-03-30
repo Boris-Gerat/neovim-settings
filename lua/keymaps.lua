@@ -1,3 +1,12 @@
+vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
+  pattern = "*.ipynb",
+  callback = function()
+    vim.bo.filetype = "jupyter"
+  end,
+})
+
+
+
 -- ============================================================
 -- KEYMAPS.LUA (clean + conflict-free + working)
 -- ============================================================
@@ -291,57 +300,66 @@ vim.g.molten_virt_text_output = true
 vim.g.molten_virt_lines_off_by_1 = false
 
 -- ============================================================
--- JUPYTER / MOLTEN (only for .ipynb — never plain .py)
+-- JUPYTER / MOLTEN
+-- Keymaps attached via BufEnter on *.ipynb so they work
+-- regardless of whether filetype ends up as "jupyter" or "python"
 -- ============================================================
 
-vim.api.nvim_create_autocmd("FileType", {
-  pattern = { "jupyter" },
-  callback = function(ev)
-    vim.schedule(function()
-      local opts = { buffer = ev.buf, silent = true }
+local function setup_molten_keymaps(buf)
+  -- Guard: only set up once per buffer
+  if vim.b[buf].molten_keymaps_set then return end
+  vim.b[buf].molten_keymaps_set = true
 
-      vim.keymap.set("n", "<leader>ji", "<cmd>MoltenInit<CR>",
-        vim.tbl_extend("force", opts, { desc = "Jupyter: Init kernel" }))
+  local opts = { buffer = buf, silent = true }
 
-      vim.keymap.set("n", "<S-CR>", "<cmd>MoltenEvaluateLine<CR>",
-        vim.tbl_extend("force", opts, { desc = "Jupyter: Run line" }))
+  vim.keymap.set("n", "<leader>ji", "<cmd>MoltenInit python3<CR>",
+    vim.tbl_extend("force", opts, { desc = "Jupyter: Init kernel" }))
 
-      vim.keymap.set("v", "<S-CR>", function()
-        vim.cmd("noautocmd normal! \27")
-        vim.cmd("MoltenEvaluateVisual")
-      end, vim.tbl_extend("force", opts, { desc = "Jupyter: Run selection" }))
+  vim.keymap.set("n", "<S-CR>", "<cmd>MoltenEvaluateLine<CR>",
+    vim.tbl_extend("force", opts, { desc = "Jupyter: Run line" }))
 
-      vim.keymap.set("n", "<leader>r", function()
-        local pos = vim.api.nvim_win_get_cursor(0)
-        vim.cmd("normal! ggVG")
-        vim.cmd("MoltenEvaluateVisual")
-        vim.api.nvim_win_set_cursor(0, pos)
-      end, vim.tbl_extend("force", opts, { desc = "Jupyter: Run all" }))
+  vim.keymap.set("v", "<S-CR>", function()
+    vim.cmd("noautocmd normal! \27")
+    vim.cmd("MoltenEvaluateVisual")
+  end, vim.tbl_extend("force", opts, { desc = "Jupyter: Run selection" }))
 
-      vim.keymap.set("n", "<leader>jl", "<cmd>MoltenReevaluateCell<CR>",
-        vim.tbl_extend("force", opts, { desc = "Jupyter: Re-run cell" }))
-      vim.keymap.set("n", "<leader>jq", "<cmd>MoltenDeinit<CR>",
-        vim.tbl_extend("force", opts, { desc = "Jupyter: Close kernel" }))
-      vim.keymap.set("n", "<leader>jk", "<cmd>MoltenInterrupt<CR>",
-        vim.tbl_extend("force", opts, { desc = "Jupyter: Interrupt kernel" }))
-      vim.keymap.set("n", "<leader>jo", "<cmd>MoltenShowOutput<CR>",
-        vim.tbl_extend("force", opts, { desc = "Jupyter: Show output" }))
-      vim.keymap.set("n", "<leader>jh", "<cmd>MoltenHideOutput<CR>",
-        vim.tbl_extend("force", opts, { desc = "Jupyter: Hide output" }))
-    end)
-  end,
-})
+  vim.keymap.set("n", "<leader>r", function()
+    local pos = vim.api.nvim_win_get_cursor(0)
+    vim.cmd("normal! ggVG")
+    vim.cmd("MoltenEvaluateVisual")
+    vim.api.nvim_win_set_cursor(0, pos)
+  end, vim.tbl_extend("force", opts, { desc = "Jupyter: Run all" }))
 
--- Auto-init kernel when opening .ipynb
+  vim.keymap.set("n", "<leader>jl", "<cmd>MoltenReevaluateCell<CR>",
+    vim.tbl_extend("force", opts, { desc = "Jupyter: Re-run cell" }))
+  vim.keymap.set("n", "<leader>jq", "<cmd>MoltenDeinit<CR>",
+    vim.tbl_extend("force", opts, { desc = "Jupyter: Close kernel" }))
+  vim.keymap.set("n", "<leader>jk", "<cmd>MoltenInterrupt<CR>",
+    vim.tbl_extend("force", opts, { desc = "Jupyter: Interrupt kernel" }))
+  vim.keymap.set("n", "<leader>jo", "<cmd>MoltenShowOutput<CR>",
+    vim.tbl_extend("force", opts, { desc = "Jupyter: Show output" }))
+  vim.keymap.set("n", "<leader>jh", "<cmd>MoltenHideOutput<CR>",
+    vim.tbl_extend("force", opts, { desc = "Jupyter: Hide output" }))
+end
+
+-- Attach keymaps + auto-init kernel based on FILENAME, not filetype.
+-- This fires after jupytext (or any conversion plugin) has done its thing.
 vim.api.nvim_create_autocmd("BufEnter", {
   pattern = "*.ipynb",
-  callback = function()
+  callback = function(ev)
     vim.defer_fn(function()
-      if not vim.b.molten_initialized then
+      -- Ensure buffer is still valid (user might have closed it)
+      if not vim.api.nvim_buf_is_valid(ev.buf) then return end
+
+      -- Set up keymaps for this buffer
+      setup_molten_keymaps(ev.buf)
+
+      -- Auto-init kernel if not already done
+      if not vim.b[ev.buf].molten_initialized then
         vim.cmd("MoltenInit python3")
-        vim.b.molten_initialized = true
+        vim.b[ev.buf].molten_initialized = true
       end
-    end, 100)
+    end, 200) -- 200ms delay to let jupytext finish converting
   end,
 })
 
@@ -380,23 +398,14 @@ vim.keymap.set("n", "<leader>Q", function()
   local tw = vim.opt.textwidth:get()
   if tw == 0 then tw = 80 end
   local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
-  for i, line in ipairs(lines) do
-    if #line > tw then
+  -- Iterate in reverse so line-number shifts from gqq don't affect us
+  for i = #lines, 1, -1 do
+    if #lines[i] > tw then
       vim.api.nvim_win_set_cursor(0, { i, 0 })
       vim.cmd("normal! gqq")
     end
   end
 end, { silent = true, desc = "Wrap only long lines" })
-
-
-
-
-vim.filetype.add({
-  extension = {
-    ipynb = "jupyter",
-  },
-})
-
 
 
 -- R TERMINAL TOGGLE
