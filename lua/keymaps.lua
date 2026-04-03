@@ -215,16 +215,11 @@ local function r_start_and_focus()
 end
 
 map("n", "<leader>rr", r_start_and_focus, { desc = "R: Start + show console" })
-map("n", "<leader>rq", "<cmd>RClose<cr>", { desc = "R: Close" })
+map("n", "<leader>rq", "<cmd>RKill<cr>", { desc = "R: Kill" })
 
 vim.keymap.set("n", "<leader>rc", function()
-  if vim.fn.exists(":RClose") == 2 then
-    pcall(vim.cmd, "RClose")
-  end
-  if not pcall(vim.cmd, "RStart") then
-    pcall(vim.cmd, "R")
-  end
-end, { desc = "R: Toggle console" })
+  require("r.run").start_R("R")
+end, { desc = "R: Start console" })
 
 vim.keymap.set("t", "<leader>cl", function()
   local keys = vim.api.nvim_replace_termcodes(
