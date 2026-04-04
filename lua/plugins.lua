@@ -200,18 +200,18 @@ return {
 
   -- ────────────────────── R ──────────────────────
   {
-    "R-nvim/R.nvim",
-    ft = { "r", "rmd", "quarto" },
-    config = function()
-      require("r").setup({
-        R_args = { "--quiet", "--no-save" },
-        auto_start = "no",
-        max_paste_lines = 1,
-        source_args = "echo=TRUE",
-      })
-    end,
-  },
-
+  "R-nvim/R.nvim",
+  ft = { "r", "rmd", "quarto" },
+  config = function()
+    require("r").setup({
+      R_args = { "--quiet", "--no-save" },
+      auto_start = "no",
+      max_paste_lines = 1,
+      source_args = "echo=TRUE",
+      nvimpager = "split_h",
+    })
+  end,
+},
   -- ────────────────────── LaTeX (vimtex) ──────────────────────
   {
     "lervag/vimtex",
@@ -385,29 +385,39 @@ return {
   },
 
   -- ────────────────────── Obsidian ──────────────────────
-  {
-    "epwalsh/obsidian.nvim",
-    version = "*",
-    lazy = true,
-    ft = "markdown",
-    dependencies = {
-      "nvim-lua/plenary.nvim",
-    },
-    opts = {
-      workspaces = {
-        { name = "personal", path = "/Users/borisgerat/Documents/Obsidian" },
-      },
-      completion = {
-        nvim_cmp = true,
-        min_chars = 2,
-      },
-      ui = {
-        enable = true,
-      },
-      follow_url_func = function(url)
-        vim.fn.jobstart({ "open", url })
-      end,
-    },
+{
+  "epwalsh/obsidian.nvim",
+  ft = "markdown",
+  dependencies = {
+    "nvim-lua/plenary.nvim",
   },
-
+  opts = {
+    workspaces = {
+      { name = "main", path = "/Users/borisgerat/Documents/Obsidian/main" },
+    },
+    templates = {
+      folder = "3-Templates",
+    },
+    note_id_func = function(title)
+      if title then
+        return title:gsub(" ", "-"):lower()
+      else
+        return tostring(os.time())
+      end
+    end,
+    note_frontmatter_func = function(note)
+      return {}
+    end,
+    completion = {
+      nvim_cmp = true,
+      min_chars = 2,
+    },
+    ui = {
+      enable = true,
+    },
+    follow_url_func = function(url)
+      vim.fn.jobstart({ "open", url })
+    end,
+  },
+},
 }

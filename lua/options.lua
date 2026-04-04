@@ -57,3 +57,7 @@ vim.api.nvim_create_autocmd("BufWritePost", {
     end
   end,
 })
+
+vim.o.conceallevel = 2
+
+

@@ -421,3 +421,81 @@ map("n", "<leader>rt", function()
     pcall(vim.cmd, "RShow")
   end
 end, { desc = "R: Toggle console visibility" })
+
+
+
+
+-- Terminal Limitations 
+vim.api.nvim_create_autocmd("TermOpen", {
+  callback = function(ev)
+    vim.keymap.set("n", "<leader>n", "<Nop>", { buffer = ev.buf, silent = true })
+    vim.keymap.set("n", "<leader>p", "<Nop>", { buffer = ev.buf, silent = true })
+  end,
+})
+
+
+-- Obsidian Keymaps
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "markdown",
+  callback = function(ev)
+    local opts = { buffer = ev.buf, silent = true }
+    vim.keymap.set("n", "<leader>on", "<cmd>ObsidianNew<CR>",
+      vim.tbl_extend("force", opts, { desc = "Obsidian: New note" }))
+    vim.keymap.set("n", "<CR>", "<cmd>ObsidianFollowLink<CR>",
+      vim.tbl_extend("force", opts, { desc = "Obsidian: Follow link" }))
+    vim.keymap.set("n", "<leader>ob", "<cmd>ObsidianBacklinks<CR>",
+      vim.tbl_extend("force", opts, { desc = "Obsidian: Backlinks" }))
+    vim.keymap.set("n", "<leader>oo", "<cmd>ObsidianOpen<CR>",
+      vim.tbl_extend("force", opts, { desc = "Obsidian: Open in app" }))
+    vim.keymap.set("n", "<leader>ot", "<cmd>ObsidianTemplate<CR>",
+      vim.tbl_extend("force", opts, { desc = "Obsidian: Insert template" }))
+    vim.keymap.set("n", "<leader>od", function()
+      local file = vim.fn.expand("%:p")
+      vim.ui.input({ prompt = "Delete " .. vim.fn.expand("%:t") .. "? (y/n): " }, function(input)
+        if input == "y" then
+          vim.cmd("bdelete!")
+          vim.fn.delete(file)
+          vim.notify("Deleted: " .. file)
+        end
+      end)
+    end, vim.tbl_extend("force", opts, { desc = "Obsidian: Delete note" }))
+    vim.keymap.set("n", "<leader>oj", function()
+      require("telescope.builtin").find_files({
+        prompt_title = "Tags",
+        cwd = "/Users/borisgerat/Documents/Obsidian/main/2-Tags",
+        attach_mappings = function(_, map)
+          map("i", "<CR>", function(prompt_bufnr)
+            local selection = require("telescope.actions.state").get_selected_entry()
+            require("telescope.actions").close(prompt_bufnr)
+            local tag_name = vim.fn.fnamemodify(selection.value, ":t:r")
+            vim.api.nvim_put({ "[[" .. tag_name .. "]]" }, "c", true, true)
+          end)
+          return true
+        end,
+      })
+    end, vim.tbl_extend("force", opts, { desc = "Obsidian: Insert tag link" }))
+    vim.keymap.set("n", "<leader>og", function()
+      vim.ui.input({ prompt = "Tag name: " }, function(name)
+        if name and name ~= "" then
+          local path = "/Users/borisgerat/Documents/Obsidian/main/2-Tags/" .. name .. ".md"
+          vim.cmd("edit " .. path)
+        end
+      end)
+    end, vim.tbl_extend("force", opts, { desc = "Obsidian: New tag note" }))
+  end,
+})
+
+vim.api.nvim_create_autocmd("BufWritePre", {
+  pattern = "*.md",
+  callback = function()
+    local date = os.date("%Y-%m-%d %H:%M")
+    local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+    for i, line in ipairs(lines) do
+      if line:match("^%*%*Date last edited:%*%*") then
+        lines[i] = "**Date last edited:** " .. date
+        vim.api.nvim_buf_set_lines(0, 0, -1, false, lines)
+        break
+      end
+    end
+  end,
+})
