@@ -433,8 +433,7 @@ vim.api.nvim_create_autocmd("TermOpen", {
   end,
 })
 
-
--- Obsidian Keymaps
+-- Obsidian
 vim.api.nvim_create_autocmd("FileType", {
   pattern = "markdown",
   callback = function(ev)
@@ -443,7 +442,7 @@ vim.api.nvim_create_autocmd("FileType", {
       vim.tbl_extend("force", opts, { desc = "Obsidian: New note" }))
     vim.keymap.set("n", "<CR>", "<cmd>ObsidianFollowLink<CR>",
       vim.tbl_extend("force", opts, { desc = "Obsidian: Follow link" }))
-    vim.keymap.set("n", "<leader>ob", "<cmd>ObsidianBacklinks<CR>",
+    vim.keymap.set("n", "<leader>oB", "<cmd>ObsidianBacklinks<CR>",        -- capital B now
       vim.tbl_extend("force", opts, { desc = "Obsidian: Backlinks" }))
     vim.keymap.set("n", "<leader>oo", "<cmd>ObsidianOpen<CR>",
       vim.tbl_extend("force", opts, { desc = "Obsidian: Open in app" }))
@@ -482,8 +481,21 @@ vim.api.nvim_create_autocmd("FileType", {
         end
       end)
     end, vim.tbl_extend("force", opts, { desc = "Obsidian: New tag note" }))
-  end,
-})
+	vim.keymap.set("v", "<leader>ob", function()
+	      vim.cmd("normal! \27")
+	      local s_start = vim.fn.getpos("'<")
+	      local s_end   = vim.fn.getpos("'>")
+	      local s_row, s_col = s_start[2] - 1, s_start[3] - 1
+	      local e_row         = s_end[2] - 1
+	      local line_len = #vim.api.nvim_buf_get_lines(0, e_row, e_row + 1, false)[1]
+	      local e_col = math.min(s_end[3], line_len)
+	      local lines = vim.api.nvim_buf_get_text(0, s_row, s_col, e_row, e_col, {})
+	      lines[1]      = "**" .. lines[1]
+	      lines[#lines] = lines[#lines] .. "**"
+	      vim.api.nvim_buf_set_text(0, s_row, s_col, e_row, e_col, lines)
+	    end, vim.tbl_extend("force", opts, { desc = "Obsidian: Bold selection" }))
+	  end,      -- closes the autocmd callback function
+	})          -- closes nvim_create_autocmd
 
 vim.api.nvim_create_autocmd("BufWritePre", {
   pattern = "*.md",
