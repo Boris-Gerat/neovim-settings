@@ -60,4 +60,15 @@ vim.api.nvim_create_autocmd("BufWritePost", {
 
 vim.o.conceallevel = 2
 
-
+-- Fix to markdown hard breaks
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = { "markdown", "tex", "text" },
+  callback = function()
+    vim.opt_local.textwidth = 0
+    vim.opt_local.formatoptions:remove("t")
+    vim.opt_local.colorcolumn = tostring(vim.g.my_colorcolumn)
+    vim.opt_local.wrap = true
+    vim.opt_local.linebreak = true      -- break at word boundaries, not mid-word
+    vim.opt_local.breakindent = true
+  end,
+})
