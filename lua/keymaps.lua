@@ -515,3 +515,83 @@ vim.api.nvim_create_autocmd("FileType", {
   end,
 })
 
+-- ============================================================
+-- R.nvim: smart start/toggle console (reuses existing R process)
+-- ============================================================
+
+-- Find an existing R terminal buffer (alive or hidden)
+local function find_r_buf()
+  for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+    if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].buftype == "terminal" then
+      local name = vim.api.nvim_buf_get_name(buf)
+      if name:match("term://.*R") then
+        return buf
+      end
+    end
+  end
+  return nil
+end
+
+-- Find the window currently showing the R buffer, if any
+local function find_r_win(r_buf)
+  if not r_buf then return nil end
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    if vim.api.nvim_win_get_buf(win) == r_buf then
+      return win
+    end
+  end
+  return nil
+end
+
+-- <leader>rc: start R if not running, otherwise show/focus existing console
+vim.keymap.set("n", "<leader>rc", function()
+  local r_buf = find_r_buf()
+  if r_buf then
+    local r_win = find_r_win(r_buf)
+    if r_win then
+      vim.api.nvim_set_current_win(r_win)   -- already visible, just focus
+    else
+      vim.cmd("botright sbuffer " .. r_buf)  -- hidden, re-show it horizontally
+      vim.cmd("resize 15")
+    end
+  else
+    pcall(vim.cmd, "RStart")  -- no R running, start fresh
+  end
+end, { desc = "R: Start or focus console" })
+
+-- <leader>rt: toggle console visibility (never kills R)
+vim.keymap.set("n", "<leader>rt", function()
+  local r_buf = find_r_buf()
+  if not r_buf then
+    vim.notify("R is not running. Use <leader>rc to start it.", vim.log.levels.INFO)
+    return
+  end
+  local r_win = find_r_win(r_buf)
+  if r_win then
+    vim.api.nvim_win_hide(r_win)  -- hide window, R keeps running
+  else
+    vim.cmd("botright sbuffer " .. r_buf)
+    vim.cmd("resize 15")
+    vim.cmd("wincmd p")  -- jump back to code
+  end
+end, { desc = "R: Toggle console visibility" })
+
+-- <leader>rq: actually kill R when you want to
+vim.keymap.set("n", "<leader>rq", "<cmd>RStop<cr>", { desc = "R: Kill" })
+
+
+
+vim.keymap.set("n", "<leader>rc", function()
+  local r_buf = find_r_buf()
+  if r_buf then
+    local r_win = find_r_win(r_buf)
+    if r_win then
+      vim.api.nvim_set_current_win(r_win)
+    else
+      vim.cmd("botright sbuffer " .. r_buf)
+      vim.cmd("resize 15")
+    end
+  else
+    require("r.run").start_R("R")  -- no R running, start fresh
+  end
+end, { desc = "R: Start or focus console" })

@@ -72,3 +72,74 @@ vim.api.nvim_create_autocmd("FileType", {
     vim.opt_local.breakindent = true
   end,
 })
+
+-- Persistent bottom terminal
+local term_buf = nil
+local term_win = nil
+
+local function open_term()
+  -- reuse existing buffer if alive
+  if term_buf and vim.api.nvim_buf_is_valid(term_buf) then
+    if not (term_win and vim.api.nvim_win_is_valid(term_win)) then
+      vim.cmd("botright 15split")
+      term_win = vim.api.nvim_get_current_win()
+      vim.api.nvim_win_set_buf(term_win, term_buf)
+    end
+    return
+  end
+  -- fresh terminal
+  vim.cmd("botright 15split")
+  term_win = vim.api.nvim_get_current_win()
+  vim.cmd("terminal")
+  term_buf = vim.api.nvim_get_current_buf()
+  vim.cmd("wincmd p") -- jump back to code
+end
+
+local function close_term()
+  if term_buf and vim.api.nvim_buf_is_valid(term_buf) then
+    vim.cmd("bwipeout! " .. term_buf)
+    term_buf = nil
+    term_win = nil
+  end
+end
+
+-- When deleting a buffer, if any window would end up showing the R terminal
+-- (because the deleted buffer was its previous occupant), swap it for a normal buffer
+vim.api.nvim_create_autocmd("BufWinLeave", {
+  callback = function(ev)
+    -- Only care when a NORMAL file buffer is leaving a window
+    if vim.bo[ev.buf].buftype ~= "" then return end
+
+    vim.schedule(function()
+      for _, win in ipairs(vim.api.nvim_list_wins()) do
+        local buf = vim.api.nvim_win_get_buf(win)
+        if vim.bo[buf].buftype == "terminal" then
+          -- This window now shows a terminal — was it the one we just left?
+          -- Find a replacement normal buffer
+          for _, b in ipairs(vim.api.nvim_list_bufs()) do
+            if b ~= buf
+              and vim.api.nvim_buf_is_loaded(b)
+              and vim.bo[b].buflisted
+              and vim.bo[b].buftype == ""
+            then
+              -- Only swap windows that weren't ALREADY showing the terminal before
+              -- (i.e. the R console's own dedicated window should be left alone)
+              local ok, was_term = pcall(vim.api.nvim_win_get_var, win, "_is_r_console")
+              if not (ok and was_term) then
+                pcall(vim.api.nvim_win_set_buf, win, b)
+              end
+              break
+            end
+          end
+        end
+      end
+    end)
+  end,
+})
+
+-- Mark the R console window so we never swap its contents
+vim.api.nvim_create_autocmd("TermOpen", {
+  callback = function()
+    vim.api.nvim_win_set_var(0, "_is_r_console", true)
+  end,
+})

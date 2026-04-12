@@ -197,18 +197,18 @@ return {
       vim.lsp.enable("lua_ls")
     end,
   },
-
-  -- ────────────────────── R ──────────────────────
-  {
+{
   "R-nvim/R.nvim",
   ft = { "r", "rmd", "quarto" },
   config = function()
     require("r").setup({
-      R_args = { "--quiet", "--no-save" },
-      auto_start = "no",
-      max_paste_lines = 1,
-      source_args = "echo=TRUE",
-      nvimpager = "split_h",
+      R_args           = { "--quiet", "--no-save" },
+      auto_start       = "no",
+      max_paste_lines  = 1,
+      source_args      = "echo=TRUE",
+      nvimpager        = "split_h",
+      rconsole_width   = 57,
+      min_editor_width = 80,
     })
   end,
 },
