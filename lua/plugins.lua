@@ -197,6 +197,11 @@ return {
       vim.lsp.enable("lua_ls")
     end,
   },
+
+
+
+-- ────────────────────── R nvim ──────────────────────
+
 {
   "R-nvim/R.nvim",
   ft = { "r", "rmd", "quarto" },
@@ -206,12 +211,17 @@ return {
       auto_start       = "no",
       max_paste_lines  = 1,
       source_args      = "echo=TRUE",
-      nvimpager        = "split_h",
+      nvimpager        = "split_h",      -- already there, this controls R output pager
       rconsole_width   = 57,
       min_editor_width = 80,
+      rconsole_height  = 15,             -- add this: height of the horizontal split
+      applescript      = false,
+      open_pdf         = "no",
     })
   end,
 },
+
+
   -- ────────────────────── LaTeX (vimtex) ──────────────────────
   {
     "lervag/vimtex",

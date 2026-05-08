@@ -102,46 +102,8 @@ vim.api.nvim_create_autocmd("FileType", {
 })
 
 -- ============================================================
--- R FILETYPE: fix lag + assignment + send line/selection + alt buffer
+-- R FILETYPE: keymaps
 -- ============================================================
-
-vim.api.nvim_create_autocmd("FileType", {
-  pattern = { "r", "R", "rmd", "quarto" },
-  callback = function(ev)
-    vim.schedule(function()
-      pcall(vim.keymap.del, "i", "<Space>,", { buffer = ev.buf })
-
-      vim.keymap.set("i", "\\.", " <- ", {
-        buffer = ev.buf,
-        silent = true,
-        desc = "Insert <-",
-      })
-
-      vim.keymap.set("n", "<S-CR>", "<Plug>RDSendLine", {
-        buffer = ev.buf,
-        silent = true,
-        desc = "Send line to R",
-      })
-      vim.keymap.set("v", "<S-CR>", "<Plug>RSendSelection", {
-        buffer = ev.buf,
-        silent = true,
-        desc = "Send selection to R",
-      })
-
-      vim.keymap.set("n", "<leader>p", "<cmd>b#<cr>", {
-        buffer = ev.buf,
-        nowait = true,
-        silent = true,
-        desc = "Previous (alternate) buffer",
-      })
-    end)
-  end,
-})
-
--- ============================================================
--- R FILETYPE: kill plugin <Space> mappings + force <leader>l
--- ============================================================
-
 vim.api.nvim_create_autocmd("FileType", {
   pattern = { "r", "R", "rmd", "quarto" },
   callback = function(ev)
@@ -150,23 +112,56 @@ vim.api.nvim_create_autocmd("FileType", {
       pcall(vim.keymap.del, "v", "<Space>", { buffer = ev.buf })
       pcall(vim.keymap.del, "i", "<Space>,", { buffer = ev.buf })
 
-      vim.keymap.set("n", "<leader>l", "$", {
-        buffer = ev.buf,
-        noremap = true,
-        silent = true,
-        nowait = true,
-        desc = "End of line",
-      })
-      vim.keymap.set("v", "<leader>l", "$", {
-        buffer = ev.buf,
-        noremap = true,
-        silent = true,
-        nowait = true,
-        desc = "End of line",
-      })
+      local opts = { buffer = ev.buf, silent = true }
+
+      vim.keymap.set("i", "\\.", " <- ",
+        vim.tbl_extend("force", opts, { desc = "Insert <-" }))
+
+      vim.keymap.set("n", "<S-CR>", "<Plug>RDSendLine",
+        vim.tbl_extend("force", opts, { desc = "Send line to R" }))
+      vim.keymap.set("v", "<S-CR>", "<Plug>RSendSelection",
+        vim.tbl_extend("force", opts, { desc = "Send selection to R" }))
+
+      vim.keymap.set("n", "<leader>p", "<cmd>b#<cr>",
+        vim.tbl_extend("force", opts, { nowait = true, desc = "Alternate buffer" }))
+
+      vim.keymap.set("n", "<leader>l", "$",
+        vim.tbl_extend("force", opts, { noremap = true, nowait = true, desc = "End of line" }))
+      vim.keymap.set("v", "<leader>l", "$",
+        vim.tbl_extend("force", opts, { noremap = true, nowait = true, desc = "End of line" }))
     end)
   end,
 })
+
+-- ============================================================
+-- R: Start or focus console (always horizontal at bottom)
+-- ============================================================
+vim.keymap.set("n", "<leader>rc", function()
+  local r_buf = find_r_buf()
+  if r_buf then
+    local r_win = find_r_win(r_buf)
+    if r_win then
+      vim.api.nvim_set_current_win(r_win)
+    else
+      vim.cmd("botright sbuffer " .. r_buf)
+      vim.cmd("resize 15")
+    end
+  else
+    require("r.run").start_R("R")
+    vim.defer_fn(function()
+      local buf = find_r_buf()
+      if buf then
+        local win = find_r_win(buf)
+        if win then
+          vim.api.nvim_set_current_win(win)
+          vim.cmd("wincmd J")
+          vim.cmd("resize 15")
+          vim.cmd("wincmd p")
+        end
+      end
+    end, 300)
+  end
+end, { desc = "R: Start or focus console" })
 
 -- ============================================================
 -- TEX: VimTeX (buffer-local overrides)
@@ -433,9 +428,7 @@ vim.api.nvim_create_autocmd("TermOpen", {
   end,
 })
 
-
 local obsidian_vault = "/Users/borisgerat/Documents/Obsidian"
-
 
 -- Global <leader>on that works everywhere
 vim.keymap.set("n", "<leader>on", function()
@@ -444,7 +437,7 @@ vim.keymap.set("n", "<leader>on", function()
     vim.ui.input({ prompt = "New note name: " }, function(name)
       if name and name ~= "" then
         name = name:gsub("%.md$", "")
-        local path = "/Users/borisgerat/Documents/Obsidian/main/" .. name .. ".md"
+        local path = obsidian_vault .. "/main/" .. name .. ".md"
         vim.cmd("edit " .. vim.fn.fnameescape(path))
       end
     end)
@@ -479,7 +472,7 @@ vim.api.nvim_create_autocmd("FileType", {
     vim.keymap.set("n", "<leader>oj", function()
       require("telescope.builtin").find_files({
         prompt_title = "Tags",
-        cwd = "/Users/borisgerat/Documents/Obsidian/main/2-Tags",
+        cwd = obsidian_vault .. "/main/2-Tags",
         attach_mappings = function(_, map)
           map("i", "<CR>", function(prompt_bufnr)
             local selection = require("telescope.actions.state").get_selected_entry()
@@ -494,7 +487,7 @@ vim.api.nvim_create_autocmd("FileType", {
     vim.keymap.set("n", "<leader>og", function()
       vim.ui.input({ prompt = "Tag name: " }, function(name)
         if name and name ~= "" then
-          local path = "/Users/borisgerat/Documents/Obsidian/main/2-Tags/" .. name .. ".md"
+          local path = obsidian_vault .. "/main/2-Tags/" .. name .. ".md"
           vim.cmd("edit " .. path)
         end
       end)
@@ -514,6 +507,30 @@ vim.api.nvim_create_autocmd("FileType", {
     end, vim.tbl_extend("force", opts, { desc = "Obsidian: Bold selection" }))
   end,
 })
+
+vim.api.nvim_create_autocmd("BufWritePre", {
+  pattern = "*.md",
+  callback = function()
+    local filepath = vim.fn.expand("%:p")
+    if not filepath:find("/Users/borisgerat/Documents/Obsidian", 1, true) then
+      return
+    end
+    local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+    for i, line in ipairs(lines) do
+      if line:find("Date last edited:", 1, true) then
+        local new_line = line:gsub(
+          "%d%d%d%d%-%d%d%-%d%d %d%d:%d%d",
+          os.date("%Y-%m-%d %H:%M")
+        )
+        if new_line ~= line then
+          vim.api.nvim_buf_set_lines(0, i - 1, i, false, { new_line })
+        end
+        break
+      end
+    end
+  end,
+})
+
 
 -- ============================================================
 -- R.nvim: smart start/toggle console (reuses existing R process)
