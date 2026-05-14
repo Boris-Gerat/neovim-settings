@@ -1,17 +1,19 @@
 -- ~/.config/nvim/lua/plugins.lua
 return {
 
-  -- ────────────────────── Noice (dependency) ──────────────────────
-  {
-    "folke/noice.nvim",
-    event = "VeryLazy",
-    dependencies = {
-      "MunifTanjim/nui.nvim",
-      "rcarriga/nvim-notify",
-    },
-    opts = {},
-  },
 
+
+-- ────────────────────── Noice (dependency) ──────────────────────
+-- ────────────────────── Noice ──────────────────────
+{
+  "folke/noice.nvim",
+  event = "VeryLazy",
+  dependencies = {
+    "MunifTanjim/nui.nvim",
+    "rcarriga/nvim-notify",
+  },
+  opts = {},
+},
   -- ────────────────────── Auto-session ──────────────────────
   {
     "rmagatti/auto-session",
@@ -162,43 +164,59 @@ return {
   },
 
   -- ────────────────────── LSP (Neovim 0.11+) ──────────────────────
-  {
-    "neovim/nvim-lspconfig",
-    lazy = false,
-    config = function()
-      local capabilities = vim.lsp.protocol.make_client_capabilities()
-      local ok_cmp, cmp_lsp = pcall(require, "cmp_nvim_lsp")
-      if ok_cmp then
-        capabilities = cmp_lsp.default_capabilities(capabilities)
-      end
+-- ────────────────────── LSP (Neovim 0.11+) ──────────────────────
+{
+  "neovim/nvim-lspconfig",
+  lazy = false,
+  config = function()
+    local capabilities = vim.lsp.protocol.make_client_capabilities()
+    local ok_cmp, cmp_lsp = pcall(require, "cmp_nvim_lsp")
+    if ok_cmp then
+      capabilities = cmp_lsp.default_capabilities(capabilities)
+    end
 
-      vim.lsp.config("pyright", {
-        capabilities = capabilities,
-        settings = {
-          python = {
-            analysis = {
-              autoSearchPaths = true,
-              useLibraryCodeForTypes = true,
+    -- Resolve venv python at startup
+    local function get_python_path()
+      local venv = os.getenv("VIRTUAL_ENV") or os.getenv("CONDA_PREFIX")
+      if venv then return venv .. "/bin/python" end
+      return vim.fn.exepath("python3")
+    end
+
+    vim.lsp.config("pyright", {
+      capabilities = capabilities,
+      before_init = function(_, config)
+        config.settings.python.pythonPath = get_python_path()
+      end,
+      settings = {
+        python = {
+          analysis = {
+            autoSearchPaths        = true,
+            useLibraryCodeForTypes = true,
+            typeCheckingMode       = "basic",   -- off → no errors; basic → sane subset
+            diagnosticSeverityOverrides = {
+              reportMissingModuleSource  = "none",  -- stops "no stubs" noise
+              reportUnknownMemberType    = "none",  -- pandas/numpy dynamic attrs
+              reportUnknownVariableType  = "none",
+              reportUnknownArgumentType  = "none",
             },
           },
         },
-      })
-      vim.lsp.enable("pyright")
+      },
+    })
+    vim.lsp.enable("pyright")
 
-      vim.lsp.config("lua_ls", {
-        capabilities = capabilities,
-        settings = {
-          Lua = {
-            diagnostics = { globals = { "vim" } },
-            workspace = { checkThirdParty = false },
-          },
+    vim.lsp.config("lua_ls", {
+      capabilities = capabilities,
+      settings = {
+        Lua = {
+          diagnostics = { globals = { "vim" } },
+          workspace   = { checkThirdParty = false },
         },
-      })
-      vim.lsp.enable("lua_ls")
-    end,
-  },
-
-
+      },
+    })
+    vim.lsp.enable("lua_ls")
+  end,
+},
 
 -- ────────────────────── R nvim ──────────────────────
 
@@ -429,5 +447,40 @@ return {
       vim.fn.jobstart({ "open", url })
     end,
   },
+},
+
+-- ────────────────────── Statusline ──────────────────────
+
+{
+  "nvim-lualine/lualine.nvim",
+  dependencies = { "nvim-tree/nvim-web-devicons" },
+  event = "VeryLazy",
+  config = function()
+    require("lualine").setup({
+      options = {
+        theme                = "auto",
+        component_separators = { left = "", right = "" },
+        section_separators   = { left = "", right = "" },
+        globalstatus         = true,
+      },
+      sections = {
+        lualine_a = { "mode" },
+        lualine_b = {
+          "branch",
+          "diff",
+	{
+		  "diagnostics",
+		  sources  = { "nvim_diagnostic" },
+		  sections = { "error" },
+		  symbols  = { error = "⊗ " },
+		},
+				  },
+        lualine_c = { { "filename", path = 1 } },
+        lualine_x = { "filetype" },
+        lualine_y = {},
+        lualine_z = { "location" },
+      },
+    })
+  end,
 },
 }

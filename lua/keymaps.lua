@@ -612,3 +612,45 @@ vim.keymap.set("n", "<leader>rc", function()
     require("r.run").start_R("R")  -- no R running, start fresh
   end
 end, { desc = "R: Start or focus console" })
+
+
+
+
+-- ============================================================
+-- LSP / DIAGNOSTICS
+-- ============================================================
+
+-- ============================================================
+-- LSP / DIAGNOSTICS
+-- ============================================================
+
+vim.api.nvim_create_autocmd("LspAttach", {
+  callback = function(ev)
+    local opts = { buffer = ev.buf, silent = true }
+
+    -- Open list of all errors → pick one → jumps to line
+    vim.keymap.set("n", "<leader>de", function()
+      require("telescope.builtin").diagnostics({
+        bufnr    = 0,           -- current file only
+        severity = vim.diagnostic.severity.ERROR,
+      })
+    end, vim.tbl_extend("force", opts, { desc = "List errors" }))
+
+    -- Cycle through errors like n/p in search
+    vim.keymap.set("n", "]d", function()
+      vim.diagnostic.goto_next({ severity = vim.diagnostic.severity.ERROR })
+    end, vim.tbl_extend("force", opts, { desc = "Next error" }))
+
+    vim.keymap.set("n", "[d", function()
+      vim.diagnostic.goto_prev({ severity = vim.diagnostic.severity.ERROR })
+    end, vim.tbl_extend("force", opts, { desc = "Prev error" }))
+
+    -- Show error on current line
+    vim.keymap.set("n", "<leader>d", vim.diagnostic.open_float,
+      vim.tbl_extend("force", opts, { desc = "Show diagnostic" }))
+
+    vim.keymap.set("n", "gd", vim.lsp.buf.definition,
+      vim.tbl_extend("force", opts, { desc = "Go to definition" }))
+  end,
+})
+
