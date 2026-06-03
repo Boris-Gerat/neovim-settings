@@ -613,13 +613,6 @@ vim.keymap.set("n", "<leader>rc", function()
   end
 end, { desc = "R: Start or focus console" })
 
-
-
-
--- ============================================================
--- LSP / DIAGNOSTICS
--- ============================================================
-
 -- ============================================================
 -- LSP / DIAGNOSTICS
 -- ============================================================
@@ -653,4 +646,40 @@ vim.api.nvim_create_autocmd("LspAttach", {
       vim.tbl_extend("force", opts, { desc = "Go to definition" }))
   end,
 })
+
+-- ============================================================
+-- Putting things inside "" or () 
+-- ============================================================
+
+local function wrap_selection(open, close)
+  return function()
+    vim.cmd("normal! \27")
+    local s_start = vim.fn.getpos("'<")
+    local s_end   = vim.fn.getpos("'>")
+    local s_row, s_col = s_start[2] - 1, s_start[3] - 1
+    local e_row         = s_end[2] - 1
+    local line_len = #vim.api.nvim_buf_get_lines(0, e_row, e_row + 1, false)[1]
+    local e_col = math.min(s_end[3], line_len)
+    local lines = vim.api.nvim_buf_get_text(0, s_row, s_col, e_row, e_col, {})
+    lines[1]      = open  .. lines[1]
+    lines[#lines] = lines[#lines] .. close
+    vim.api.nvim_buf_set_text(0, s_row, s_col, e_row, e_col, lines)
+  end
+end
+
+vim.keymap.set("v", '<leader>"', wrap_selection('"', '"'), { desc = 'Wrap in ""' })
+vim.keymap.set("v", "<leader>'", wrap_selection("'", "'"), { desc = "Wrap in ''" })
+vim.keymap.set("v", "<leader>`", wrap_selection("`", "`"), { desc = "Wrap in ``" })
+vim.keymap.set("v", "<leader>(", wrap_selection("(", ")"), { desc = "Wrap in ()" })
+
+
+
+
+
+
+
+
+
+
+
 
