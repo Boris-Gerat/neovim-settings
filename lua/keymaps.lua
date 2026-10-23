@@ -68,7 +68,7 @@ local function run_current_file()
   local ext  = vim.fn.expand("%:e")
 
   if ext == "py" then
-    require("toggleterm").exec("python " .. vim.fn.fnameescape(file), 2)
+    require("toggleterm").exec("time python " .. vim.fn.fnameescape(file), 2)
 
   elseif ext == "r" or ext == "R" then
     vim.api.nvim_feedkeys(
@@ -76,6 +76,9 @@ local function run_current_file()
       "n",
       false
     )
+
+  elseif ext == "tex" then
+    pcall(vim.cmd, "VimtexCompile")
 
   else
     vim.notify("No runner for this filetype: " .. ext, vim.log.levels.WARN)
@@ -167,13 +170,19 @@ end, { desc = "R: Start or focus console" })
 -- TEX: VimTeX (buffer-local overrides)
 -- ============================================================
 
+vim.filetype.add({ extension = { tex = "tex" } })
+
 vim.api.nvim_create_autocmd("FileType", {
-  pattern = "tex",
+  pattern = { "tex", "plaintex", "latex" },
   callback = function(ev)
     local opts = { buffer = ev.buf, silent = true, noremap = true }
 
+    -- create ./build next to the .tex file (vimtex build_dir is relative to it)
+    local dir = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(ev.buf), ":p:h")
+    if dir ~= "" then vim.fn.mkdir(dir .. "/build", "p") end
+
     vim.keymap.set("n", "<leader>r", "<cmd>VimtexCompile<CR>",
-      vim.tbl_extend("force", opts, { desc = "VimTeX Compile" })
+      vim.tbl_extend("force", opts, { nowait = true, desc = "VimTeX Compile" })
     )
     vim.keymap.set("n", "<leader>v", "<cmd>VimtexView<CR>",
       vim.tbl_extend("force", opts, { desc = "View PDF" })
@@ -216,15 +225,6 @@ vim.keymap.set("n", "<leader>rc", function()
   require("r.run").start_R("R")
 end, { desc = "R: Start console" })
 
-vim.keymap.set("t", "<leader>cl", function()
-  local keys = vim.api.nvim_replace_termcodes(
-    'system("clear")\r',
-    true,
-    false,
-    true
-  )
-  vim.api.nvim_feedkeys(keys, "t", false)
-end, { desc = "Clear R console" })
 
 -- ============================================================
 -- LSP: prevent K being stolen by hover
@@ -532,6 +532,48 @@ vim.api.nvim_create_autocmd("BufWritePre", {
 })
 
 
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "markdown",
+  callback = function(ev)
+    local opts = { buffer = ev.buf, silent = true }
+
+    vim.bo[ev.buf].autoindent = false
+    vim.bo[ev.buf].smartindent = false
+    vim.bo[ev.buf].indentexpr = ""
+
+    vim.keymap.set("i", "<CR>", function()
+      if vim.fn.pumvisible() == 1 then
+        return vim.api.nvim_replace_termcodes("<C-e><CR>", true, false, true)
+      end
+      local line = vim.api.nvim_get_current_line()
+      local indent = line:match("^(%s*)%-%s")
+      if indent then
+        if line:match("^%s*%-%s*$") then
+          local col = #line
+          return vim.api.nvim_replace_termcodes(
+            string.rep("<BS>", col) .. "<CR>",
+            true, false, true
+          )
+        end
+        return vim.api.nvim_replace_termcodes("<CR>" .. indent .. "- ", true, false, true)
+      end
+      return vim.api.nvim_replace_termcodes("<CR>", true, false, true)
+    end, { buffer = ev.buf, expr = true, noremap = true, silent = true, desc = "Smart list continue" })
+
+  end,
+}) 
+
+
+
+vim.keymap.set("n", "<leader>or", function()
+  require("telescope.builtin").find_files({
+    prompt_title = "Recent Obsidian Notes",
+    cwd = obsidian_vault .. "/main",
+    find_command = { "ls", "-t" },  -- sort by modification time
+  })
+end, { silent = true, desc = "Obsidian: Recent notes" })
+
+
 -- ============================================================
 -- R.nvim: smart start/toggle console (reuses existing R process)
 -- ============================================================
@@ -671,15 +713,5 @@ vim.keymap.set("v", '<leader>"', wrap_selection('"', '"'), { desc = 'Wrap in ""'
 vim.keymap.set("v", "<leader>'", wrap_selection("'", "'"), { desc = "Wrap in ''" })
 vim.keymap.set("v", "<leader>`", wrap_selection("`", "`"), { desc = "Wrap in ``" })
 vim.keymap.set("v", "<leader>(", wrap_selection("(", ")"), { desc = "Wrap in ()" })
-
-
-
-
-
-
-
-
-
-
 
 
