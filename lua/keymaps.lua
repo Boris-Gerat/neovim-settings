@@ -715,3 +715,6 @@ vim.keymap.set("v", "<leader>`", wrap_selection("`", "`"), { desc = "Wrap in ``"
 vim.keymap.set("v", "<leader>(", wrap_selection("(", ")"), { desc = "Wrap in ()" })
 
 
+vim.keymap.set("t", "<C-q>", [[<C-\><C-n>]], { noremap = true, silent = true, desc = "Terminal -> normal mode" })
+
+
